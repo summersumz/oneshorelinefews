@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Tide Forecast</title>
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: #f0f4f8;
+  }
+  .card {
+    background: white;
+    border-radius: 12px;
+    padding: 40px 60px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  }
+  h2 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    color: #555;
+    font-weight: normal;
+  }
+  #count {
+    font-size: 96px;
+    font-weight: bold;
+    color: #1a3a5c;
+    line-height: 1;
+  }
+  #label {
+    font-size: 14px;
+    color: #888;
+    margin-top: 12px;
+  }
+  #station {
+    font-size: 12px;
+    color: #bbb;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>Days with Peak Tide &gt; 7 ft</h2>
+  <div id="count">...</div>
+  <div id="label">next 7 days</div>
+  <div id="station"></div>
+</div>
+
+<script>
+var STATION = "9414523";  // Redwood City
+var THRESHOLD = 7.0;
+
+function fmt(d) {
+  var y = d.getFullYear();
+  var m = String(d.getMonth() + 1);
+  var day = String(d.getDate());
+  if (m.length < 2) m = '0' + m;
+  if (day.length < 2) day = '0' + day;
+  return y + m + day;
+}
+
+var today = new Date();
+var end = new Date();
+end.setDate(today.getDate() + 6);
+
+var url = 'https://api.tidesandcurrents.noaa.gov/api/prod/datagetter'
+  + '?product=predictions'
+  + '&station=' + STATION
+  + '&begin_date=' + fmt(today)
+  + '&end_date=' + fmt(end)
+  + '&datum=MLLW'
+  + '&time_zone=lst_ldt'
+  + '&interval=hilo'
+  + '&units=english'
+  + '&format=json';
+
+var xhr = new XMLHttpRequest();
+xhr.open('GET', url, true);
+xhr.onload = function() {
+  try {
+    var json = JSON.parse(xhr.responseText);
+    if (json.error) {
+      document.getElementById('count').textContent = 'ERR';
+      document.getElementById('station').textContent = json.error.message;
+      return;
+    }
+
+    // Find peak HIGH tide per day
+    var dayMax = {};
+    var preds = json.predictions;
+    for (var i = 0; i < preds.length; i++) {
+      var p = preds[i];
+      if (p.type !== 'H') continue;
+      var day = p.t.split(' ')[0];
+      var val = parseFloat(p.v);
+      if (!dayMax[day] || val > dayMax[day]) dayMax[day] = val;
+    }
+
+    // Count days over threshold
+    var count = 0;
+    var days = Object.keys(dayMax);
+    for (var d = 0; d < days.length; d++) {
+      if (dayMax[days[d]] > THRESHOLD) count++;
+    }
+
+    document.getElementById('count').textContent = count;
+    document.getElementById('label').textContent = 'of next ' + days.length + ' days with peak tide > ' + THRESHOLD + ' ft';
+    document.getElementById('station').textContent = 'NOAA Station ' + STATION + ' · Datum: MLLW';
+
+  } catch(e) {
+    document.getElementById('count').textContent = 'ERR';
+    document.getElementById('station').textContent = e.message;
+  }
+};
+xhr.onerror = function() {
+  document.getElementById('count').textContent = 'ERR';
+  document.getElementById('station').textContent = 'Network error - check connection';
+};
+xhr.timeout = 10000;
+xhr.ontimeout = function() {
+  document.getElementById('count').textContent = 'ERR';
+  document.getElementById('station').textContent = 'Request timed out';
+};
+xhr.send();
+</script>
+</body>
+</html>
