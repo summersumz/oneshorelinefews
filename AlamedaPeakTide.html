@@ -112,7 +112,7 @@ xhr.onload = function() {
 
     document.getElementById('count').textContent = count;
     document.getElementById('label').textContent = 'of next ' + days.length + ' days with peak tide > ' + THRESHOLD + ' ft';
-    document.getElementById('station').textContent = 'NOAA Station ' + STATION + ' · Datum: MLLW';
+    document.getElementById('station').textContent = 'NOAA Station ' + STATION + ' · Datum: NAVD';
 
   } catch(e) {
     document.getElementById('count').textContent = 'ERR';
